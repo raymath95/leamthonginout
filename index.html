@@ -206,23 +206,6 @@
         <select class="form-control select2" id="employee">
           <option value="" disabled selected>พิมพ์เพื่อค้นหาพนักงาน...</option>
         </select>
-      </div>
-      <div class="btn-action">
-        <button type="button" class="btn btn-clockin" onclick="ClockIn()">🟢 เข้างาน</button>
-        <button type="button" class="btn btn-clockout" onclick="ClockOut()">🔴 เลิกงาน</button>
-      </div>
-      <div class="form-group">
-
-        // ⚠️ สำคัญ: ต้อง Deploy code.gs เป็น Web App แล้วเอา URL มาใส่ตรงนี้
-        const WEB_APP_URL =
-        "https://script.google.com/macros/s/AKfycbzQETxqoLA6CfSXU0AvEnUjGdqZP2Huq6ueuYiJoXcnsbFCvLd2MRtbrEEJOZMdIFNN/exec";
-
-        $(document).ready(function () {
-        console.log('[Frontend] Page loaded');
-        $('#message').html('☀️ ขอให้ทำงานอย่างมีความสุข');
-        $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'พิมพ์ชื่อพนักงานเพื่อค้นหา...', allowClear: true });
-        showTime();
-        loadInitialData();
 
         // เริ่มต้นทำงาน LIFF
         initializeLiff();
