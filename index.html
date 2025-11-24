@@ -230,7 +230,7 @@
     const MY_LIFF_ID = "2008550547-YqeDarAE";
 
     // ⚠️ สำคัญ: ต้อง Deploy code.gs เป็น Web App แล้วเอา URL มาใส่ตรงนี้
-    const WEB_APP_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzQETxqoLA6CfSXU0AvEnUjGdqZP2Huq6ueuYiJoXcnsbFCvLd2MRtbrEEJOZMdIFNN/exec";
 
     $(document).ready(function () {
       console.log('[Frontend] Page loaded');
@@ -238,18 +238,47 @@
       $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'พิมพ์ชื่อพนักงานเพื่อค้นหา...', allowClear: true });
       showTime();
       loadInitialData();
-      const savedEmployee = localStorage.getItem('selectedEmployee');
-      if (savedEmployee) {
-        $('#employee').val(savedEmployee).trigger('change');
-      }
+
+      // เริ่มต้นทำงาน LIFF
+      initializeLiff();
     });
-    $('#employee').on("change", function () {
-      if (this.value) {
-        localStorage.setItem('selectedEmployee', this.value);
-      } else {
-        localStorage.removeItem('selectedEmployee');
-      }
-    });
+
+    // --- ฟังก์ชันสำหรับ LIFF ---
+    function initializeLiff() {
+      liff.init({ liffId: MY_LIFF_ID })
+        .then(() => {
+          // ถ้าเปิดในไลน์ หรือ ล็อกอินแล้ว
+          if (liff.isLoggedIn()) {
+            liff.getProfile().then(profile => {
+              userLineID = profile.userId;
+              console.log("LIFF Init Success. UserID:", userLineID);
+            }).catch(err => console.error('Error getting profile:', err));
+          } else {
+            // ถ้ายังไม่ล็อกอิน ให้สั่งล็อกอิน (กรณีเปิดผ่าน External Browser)
+            liff.login();
+          }
+        })
+        .catch((err) => {
+          console.error('LIFF Initialization failed', err);
+          // ไม่แสดง Error popup เพราะระบบยังทำงานพื้นฐาน (บันทึกเวลา) ได้อยู่ แม้ไม่มีไลน์
+        });
+    }
+
+    function loadInitialData() {
+      console.log('[Frontend] Loading initial data...');
+      getEmployees().then(() => {
+        const savedEmployee = localStorage.getItem('selectedEmployee');
+        if (savedEmployee) {
+          $('#employee').val(savedEmployee).trigger('change');
+        }
+      });
+      $('#employee').on("change", function () {
+        if (this.value) {
+          localStorage.setItem('selectedEmployee', this.value);
+        } else {
+          localStorage.removeItem('selectedEmployee');
+        }
+      });
     }
 
     // ✅ ปรับปรุงแล้ว: รองรับทั้งใน Apps Script และภายนอก พร้อม Timeout Protection
@@ -554,6 +583,34 @@
       });
     }
   </script>
+</body>
+
+</html>
+function escapeHtml(unsafe) {
+return unsafe
+.replace(/&/g, "&amp;")
+.replace(/</g, "&lt;" ) .replace( />/g, "&gt;")
+.replace(/"/g, "&quot;")
+.replace(/'/g, "&#039;");
+}
+
+function showPopup(employee, time, status, location) {
+const safeEmployee = escapeHtml(employee);
+const safeStatus = escapeHtml(status);
+const safeLocation = escapeHtml(location);
+
+Swal.fire({
+icon: 'success', title: '✔️ บันทึกเรียบร้อย',
+html: `<div style="text-align: left; word-break: break-word;">
+  <p><strong>👤 ชื่อ:</strong> ${safeEmployee}</p>
+  <p><strong>⏰ เวลา:</strong> ${time.replace('<br>', ' ')}</p>
+  <p><strong>📋 สถานะ:</strong> ${safeStatus}</p>
+  <p><strong>📍 ตำแหน่ง:</strong> ${safeLocation}</p>
+</div>`,
+confirmButtonText: 'ปิด', confirmButtonColor: '#28a745'
+});
+}
+</script>
 </body>
 
 </html>
