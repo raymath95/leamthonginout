@@ -163,287 +163,301 @@
       color: #212529;
     }
 
-    }) .then(()=> {
+    .btn-clockout:hover {
+      background-color: #d39e00;
+      transform: scale(1.05);
+    }
 
-        // ถ้าเปิดในไลน์ หรือ ล็อกอินแล้ว
-        if (liff.isLoggedIn()) {
-          liff.getProfile().then(profile=> {
-              userLineID=profile.userId;
+    .alert {
+      padding: 15px;
+      border-radius: var(--border-radius);
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .alert-info {
+      background-color: #d1ecf1;
+      border-color: #bee5eb;
+      color: #0c5460;
+    }
+
+    .swal2-popup.warning-popup {
+      background-color: #fffacd;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="text-center">
+      <img src="https://img5.pic.in.th/file/secure-sv1/7088b986100a839eee3df494134be747.png" alt="แหลมทองกิจเกษตร"
+        class="site-logo">
+      <h1 class="company-name">แหลมทองกิจเกษตร</h1>
+    </div>
+    <div class="clock-container text-center">
+      <div id="MyClockDisplay" class="clock"></div>
+    </div>
+    <form id="myForm">
+      <div class="form-group">
+        <label for="employee">👤 ชื่อพนักงาน</label>
+        <select class="form-control select2" id="employee">
+          <option value="" disabled selected>พิมพ์เพื่อค้นหาพนักงาน...</option>
+        </select>
+      </div>
+      <div class="btn-action">
+        <button type="button" class="btn btn-clockin" onclick="ClockIn()">🟢 เข้างาน</button>
+        <button type="button" class="btn btn-clockout" onclick="ClockOut()">🔴 เลิกงาน</button>
+      </div>
+      <div class="form-group">
+        <div class="alert msgBg" role="alert" id="message"></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Debug Log Section -->
+  <div id="debug-log"
+    style="margin-top: 20px; padding: 10px; background: #333; color: #0f0; font-family: monospace; font-size: 12px; border-radius: 5px; max-height: 200px; overflow-y: auto; display: none;">
+    <strong>Debug Log:</strong><br>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    // --- Visual Logger ---
+    function logToScreen(msg, type = 'info') {
+      const logDiv = document.getElementById('debug-log');
+      if (logDiv) {
+        logDiv.style.display = 'block';
+        const color = type === 'error' ? '#ff6b6b' : '#0f0';
+        logDiv.innerHTML += `<div style="color: ${color}; border-bottom: 1px solid #444; padding: 2px;">${new Date().toLocaleTimeString()} - ${msg}</div>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+      // ยังคง log ลง console ด้วย
+      if (type === 'error') console.originalError ? console.originalError(msg) : console.error(msg);
+      else console.originalLog ? console.originalLog(msg) : console.log(msg);
+    }
+
+    // Override console.log & error
+    console.originalLog = console.log;
+    console.originalError = console.error;
+    console.log = function (msg) { logToScreen(msg, 'info'); };
+    console.error = function (msg) { logToScreen(msg, 'error'); };
+
+    // --- Global Variable เก็บ UserID ของไลน์ ---
+    var userLineID = "";
+
+    // ใส่ LIFF ID ที่ได้มาตรงนี้
+    const MY_LIFF_ID = "2008550547-YqeDarAE";
+
+    // ⚠️ สำคัญ: ต้อง Deploy code.gs เป็น Web App แล้วเอา URL มาใส่ตรงนี้
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzQETxqoLA6CfSXU0AvEnUjGdqZP2Huq6ueuYiJoXcnsbFCvLd2MRtbrEEJOZMdIFNN/exec";
+
+    $(document).ready(function () {
+      console.log('[Frontend] Page loaded');
+      $('#message').html('☀️ ขอให้ทำงานอย่างมีความสุข');
+      $('.select2').select2({ theme: 'bootstrap-5', placeholder: 'พิมพ์ชื่อพนักงานเพื่อค้นหา...', allowClear: true });
+      showTime();
+      loadInitialData();
+
+      // เริ่มต้นทำงาน LIFF
+      initializeLiff();
+    });
+
+    // --- ฟังก์ชันสำหรับ LIFF ---
+    function initializeLiff() {
+      liff.init({ liffId: MY_LIFF_ID })
+        .then(() => {
+          // ถ้าเปิดในไลน์ หรือ ล็อกอินแล้ว
+          if (liff.isLoggedIn()) {
+            liff.getProfile().then(profile => {
+              userLineID = profile.userId;
               console.log("LIFF Init Success. UserID:", userLineID);
-            }).catch(err=> console.error('Error getting profile:', err));
-        }
-
-        else {
-          // ถ้ายังไม่ล็อกอิน ให้สั่งล็อกอิน (กรณีเปิดผ่าน External Browser)
-          liff.login();
-        }
-
-      }) .catch((err)=> {
-        console.error('LIFF Initialization failed', err);
-        // ไม่แสดง Error popup เพราะระบบยังทำงานพื้นฐาน (บันทึกเวลา) ได้อยู่ แม้ไม่มีไลน์
-      });
+            }).catch(err => console.error('Error getting profile:', err));
+          } else {
+            // ถ้ายังไม่ล็อกอิน ให้สั่งล็อกอิน (กรณีเปิดผ่าน External Browser)
+            liff.login();
+          }
+        })
+        .catch((err) => {
+          console.error('LIFF Initialization failed', err);
+          // ไม่แสดง Error popup เพราะระบบยังทำงานพื้นฐาน (บันทึกเวลา) ได้อยู่ แม้ไม่มีไลน์
+        });
     }
 
     function loadInitialData() {
       console.log('[Frontend] Loading initial data...');
-
-      getEmployees().then(()=> {
-          const savedEmployee=localStorage.getItem('selectedEmployee');
-
-          if (savedEmployee) {
-            $('#employee').val(savedEmployee).trigger('change');
-          }
-        });
+      getEmployees().then(() => {
+        const savedEmployee = localStorage.getItem('selectedEmployee');
+        if (savedEmployee) {
+          $('#employee').val(savedEmployee).trigger('change');
+        }
+      });
 
       $('#employee').on("change", function () {
-          if (this.value) {
-            localStorage.setItem('selectedEmployee', this.value);
-          }
-
-          else {
-            localStorage.removeItem('selectedEmployee');
-          }
-        });
+        if (this.value) {
+          localStorage.setItem('selectedEmployee', this.value);
+        } else {
+          localStorage.removeItem('selectedEmployee');
+        }
+      });
     }
 
     // ✅ ปรับปรุงแล้ว: รองรับทั้งใน Apps Script และภายนอก พร้อม Timeout Protection
     function callAppsScript(functionName, ...args) {
-      console.log(`[Frontend] Calling $ {
-          functionName
-        }
-
-        with args:`, args);
+      console.log(`[Frontend] Calling ${functionName} with args:`, args);
 
       // ถ้ารันใน Apps Script ใช้ google.script.run
-      if (typeof google !=='undefined' && google.script && google.script.run) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
         console.log('[Frontend] Using google.script.run');
-
-        return new Promise((resolve, reject)=> {
-            google.script.run .withSuccessHandler(resolve) .withFailureHandler(reject) [functionName](...args);
-          });
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+          [functionName](...args);
+        });
       }
 
       // ถ้ารันภายนอก ใช้ fetch API พร้อม timeout
       console.log('[Frontend] Using fetch API to:', WEB_APP_URL);
-      const controller=new AbortController();
-      const timeoutId=setTimeout(()=> controller.abort(), 30000); // 30 วินาที timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 วินาที timeout
 
       return fetch(WEB_APP_URL, {
-
         method: 'POST',
         redirect: 'follow',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        }
-
-        ,
-        body: JSON.stringify({
-          functionName, args
-        }),
-      signal: controller.signal
-
-    }) .then(res=> {
-        clearTimeout(timeoutId);
-
-        if ( !res.ok) {
-          throw new Error(`HTTP $ {
-              res.status
-            }
-
-            : $ {
-              res.statusText
-            }
-
-            `);
-        }
-
-        return res.json();
-
-      }) .then(data=> {
-        console.log(`[Frontend] Response from $ {
-            functionName
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ functionName, args }),
+        signal: controller.signal
+      })
+        .then(res => {
+          clearTimeout(timeoutId);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           }
-
-          :`, data);
-        if (data.status==='error') throw new Error(data.message);
-        return data.data;
-
-      }) .catch(err=> {
-        clearTimeout(timeoutId);
-
-        if (err.name==='AbortError') {
-          console.error('Request timeout after 30 seconds');
-          throw new Error('เซิร์ฟเวอร์ตอบสนองช้าเกินไป กรุณาลองใหม่');
-        }
-
-        console.error('API Error:', err);
-        throw err;
-      });
+          return res.json();
+        })
+        .then(data => {
+          console.log(`[Frontend] Response from ${functionName}:`, data);
+          if (data.status === 'error') throw new Error(data.message);
+          return data.data;
+        })
+        .catch(err => {
+          clearTimeout(timeoutId);
+          if (err.name === 'AbortError') {
+            console.error('Request timeout after 30 seconds');
+            throw new Error('เซิร์ฟเวอร์ตอบสนองช้าเกินไป กรุณาลองใหม่');
+          }
+          console.error('API Error:', err);
+          throw err;
+        });
     }
 
     // --- แก้ไขฟังก์ชัน ClockIn ส่ง userLineID ไปด้วย ---
     async function ClockIn() {
-      const employee=$('#employee').val();
-
-      if ( !employee) {
-        Swal.fire({
-          icon: 'info', title: 'โปรดเลือกพนักงาน', text: 'กรุณาเลือกรายชื่อพนักงานก่อนกดเข้างาน'
-        });
-      return;
-    }
-
-    setButtonsProcessing(true, 'in');
-    let gps=null;
-
-    try {
-      gps=await getlocation();
-      // ส่ง userLineID เป็น parameter ตัวที่ 3
-      const response=await callAppsScript('clockIn', employee, gps, userLineID);
-      handleBackendResponse(response, employee, 'เข้างาน');
-    }
-
-    catch (error) {
-      handleError(error, 'ClockIn', ()=> ClockInRetry(employee, gps));
-    }
-
-    finally {
-      setButtonsProcessing(false);
-    }
-    }
-
-    async function ClockInRetry(employee, gps) {
-      if ( !employee || !gps) {
-        return ClockIn();
+      const employee = $('#employee').val();
+      if (!employee) {
+        Swal.fire({ icon: 'info', title: 'โปรดเลือกพนักงาน', text: 'กรุณาเลือกรายชื่อพนักงานก่อนกดเข้างาน' });
+        return;
       }
 
       setButtonsProcessing(true, 'in');
-
+      let gps = null;
       try {
+        gps = await getlocation();
         // ส่ง userLineID เป็น parameter ตัวที่ 3
-        const response=await callAppsScript('clockIn', employee, gps, userLineID);
+        const response = await callAppsScript('clockIn', employee, gps, userLineID);
         handleBackendResponse(response, employee, 'เข้างาน');
+      } catch (error) {
+        handleError(error, 'ClockIn', () => ClockInRetry(employee, gps));
+      } finally {
+        setButtonsProcessing(false);
       }
+    }
 
-      catch (error) {
-        handleError(error, 'ClockInRetry', ()=> ClockInRetry(employee, gps));
-      }
-
-      finally {
+    async function ClockInRetry(employee, gps) {
+      if (!employee || !gps) return ClockIn();
+      setButtonsProcessing(true, 'in');
+      try {
+        const response = await callAppsScript('clockIn', employee, gps, userLineID);
+        handleBackendResponse(response, employee, 'เข้างาน');
+      } catch (error) {
+        handleError(error, 'ClockInRetry', () => ClockInRetry(employee, gps));
+      } finally {
         setButtonsProcessing(false);
       }
     }
 
     // --- แก้ไขฟังก์ชัน ClockOut ส่ง userLineID ไปด้วย ---
     async function ClockOut() {
-      const employee=$('#employee').val();
-
-      if ( !employee) {
-        Swal.fire({
-          icon: 'info', title: 'โปรดเลือกพนักงาน', text: 'กรุณาเลือกรายชื่อพนักงานก่อนกดเลิกงาน'
-        });
-      return;
-    }
-
-    setButtonsProcessing(true, 'out');
-    let gps=null;
-
-    try {
-      gps=await getlocation();
-      // ส่ง userLineID เป็น parameter ตัวที่ 3
-      const response=await callAppsScript('clockOut', employee, gps, userLineID);
-      handleBackendResponse(response, employee, 'เลิกงาน');
-    }
-
-    catch (error) {
-      handleError(error, 'ClockOut', ()=> ClockOutRetry(employee, gps));
-    }
-
-    finally {
-      setButtonsProcessing(false);
-    }
-    }
-
-    async function ClockOutRetry(employee, gps) {
-      if ( !employee || !gps) {
-        return ClockOut();
+      const employee = $('#employee').val();
+      if (!employee) {
+        Swal.fire({ icon: 'info', title: 'โปรดเลือกพนักงาน', text: 'กรุณาเลือกรายชื่อพนักงานก่อนกดเลิกงาน' });
+        return;
       }
 
       setButtonsProcessing(true, 'out');
-
+      let gps = null;
       try {
+        gps = await getlocation();
         // ส่ง userLineID เป็น parameter ตัวที่ 3
-        const response=await callAppsScript('clockOut', employee, gps, userLineID);
+        const response = await callAppsScript('clockOut', employee, gps, userLineID);
         handleBackendResponse(response, employee, 'เลิกงาน');
+      } catch (error) {
+        handleError(error, 'ClockOut', () => ClockOutRetry(employee, gps));
+      } finally {
+        setButtonsProcessing(false);
       }
+    }
 
-      catch (error) {
-        handleError(error, 'ClockOutRetry', ()=> ClockOutRetry(employee, gps));
-      }
-
-      finally {
+    async function ClockOutRetry(employee, gps) {
+      if (!employee || !gps) return ClockOut();
+      setButtonsProcessing(true, 'out');
+      try {
+        const response = await callAppsScript('clockOut', employee, gps, userLineID);
+        handleBackendResponse(response, employee, 'เลิกงาน');
+      } catch (error) {
+        handleError(error, 'ClockOutRetry', () => ClockOutRetry(employee, gps));
+      } finally {
         setButtonsProcessing(false);
       }
     }
 
     function handleBackendResponse(response, employee, status) {
-      const result=response[0];
-
-      if (result[0]==='SUCCESS') {
+      const result = response[0];
+      if (result[0] === 'SUCCESS') {
         showPopup(employee, result[1], status, result[3]);
         $('#employee').val(null).trigger('change');
         localStorage.removeItem('selectedEmployee');
-      }
-
-      else if (result[0]==='FAILED') {
+      } else if (result[0] === 'FAILED') {
         Swal.fire({
-          customClass: {
-            popup: 'warning-popup'
-          }
-
-          ,
+          customClass: { popup: 'warning-popup' },
           icon: 'warning',
           title: '🟡 คำเตือน',
           text: result[2],
           confirmButtonText: 'เข้าใจแล้ว'
         });
-    }
-
-    else {
-
-      showErrorPopup('⚠️ เกิดข้อผิดพลาดจากระบบ',
-        `เซิร์ฟเวอร์พบปัญหา: $ {
-          result[2] || 'ไม่ทราบสาเหตุ'
-        }
-
-        `,
-        ()=> {});
-    }
+      } else {
+        showErrorPopup('⚠️ เกิดข้อผิดพลาดจากระบบ', `เซิร์ฟเวอร์พบปัญหา: ${result[2] || 'ไม่ทราบสาเหตุ'}`, () => { });
+      }
     }
 
     function handleError(error, context, retryCallback) {
-      if (error && (error.code >=1 && error.code <=3)) {
-        console.error(`$ {
-            context
-          }
-
-          Geolocation Error: Already handled by getlocation() popup.`);
+      if (error && (error.code >= 1 && error.code <= 3)) {
+        console.error(`${context} Geolocation Error: Already handled by getlocation() popup.`);
         return;
       }
-
-      showErrorPopup('⚠️ การเชื่อมต่อล้มเหลว',
-        'ไม่สามารถบันทึกข้อมูลได้ อาจเกิดจากปัญหาอินเทอร์เน็ต',
-        retryCallback);
-
-      console.error(`$ {
-          context
-        }
-
-        Error:`, error);
+      showErrorPopup('⚠️ การเชื่อมต่อล้มเหลว', 'ไม่สามารถบันทึกข้อมูลได้ อาจเกิดจากปัญหาอินเทอร์เน็ต', retryCallback);
+      console.error(`${context} Error:`, error);
     }
 
     function showErrorPopup(title, text, retryCallback) {
       Swal.fire({
-
         icon: 'error',
         title: title,
         text: text,
@@ -451,15 +465,11 @@
         showCancelButton: true,
         cancelButtonText: 'ลองอีกครั้ง',
         cancelButtonColor: '#28a745',
-      }).then((result)=> {
-        if (result.dismiss===Swal.DismissReason.cancel) {
-          setTimeout(()=> {
-              if (typeof retryCallback==='function') {
-                retryCallback();
-              }
-            }
-
-            , 500);
+      }).then((result) => {
+        if (result.dismiss === Swal.DismissReason.cancel) {
+          setTimeout(() => {
+            if (typeof retryCallback === 'function') retryCallback();
+          }, 500);
         }
       });
     }
@@ -467,508 +477,121 @@
     async function getEmployees() {
       console.log('[Frontend] getEmployees called');
       showLoading(true);
-
       try {
-        const data=await callAppsScript('getEmployees');
+        const data = await callAppsScript('getEmployees');
         console.log('[Frontend] Received employee data:', data);
-        const safeData=Array.isArray(data) ? data: [];
-        console.log('[Frontend] Safe data length:', safeData.length);
+        const safeData = Array.isArray(data) ? data : [];
         updateEmployeeList(safeData);
-      }
-
-      catch (error) {
+      } catch (error) {
         console.error('[Frontend] Error fetching employees:', error);
         showErrorPopup('⚠️ ไม่สามารถโหลดข้อมูลพนักงาน', 'การโหลดรายชื่อล้มเหลว โปรดตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง', getEmployees);
-      }
-
-      finally {
+      } finally {
         showLoading(false);
       }
     }
 
     function updateEmployeeList(employees) {
-      console.log('[Frontend] updateEmployeeList called with:', employees);
-      const employeeSelect=$("#employee");
+      const employeeSelect = $("#employee");
       employeeSelect.find('option:not(:first)').remove();
-
       if (Array.isArray(employees) && employees.length > 0) {
-        console.log('[Frontend] Adding', employees.length, 'employees to dropdown');
-
-        employees.forEach(item=> {
-            if (item[0] && item[0].trim() !=='') {
-              console.log('[Frontend] Adding employee:', item[0]);
-              employeeSelect.append(new Option(item[0].trim(), item[0].trim()));
-            }
-          });
-        console.log('[Frontend] Employee list updated successfully');
-      }
-
-      else {
-        console.log('[Frontend] No employees found or empty array');
+        employees.forEach(item => {
+          if (item[0] && item[0].trim() !== '') {
+            employeeSelect.append(new Option(item[0].trim(), item[0].trim()));
+          }
+        });
+      } else {
         showNotification('⚠️ ไม่พบข้อมูลพนักงานในระบบ');
       }
     }
 
     function getlocation() {
-      return new Promise((resolve, reject)=> {
-          if ( !navigator.geolocation) {
-            return reject({
-              code: 4, message: "เบราว์เซอร์ของคุณไม่รองรับ Geolocation"
-            });
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          return reject({ code: 4, message: "เบราว์เซอร์ของคุณไม่รองรับ Geolocation" });
         }
-
-        navigator.geolocation.getCurrentPosition((position)=> resolve([position.coords.latitude, position.coords.longitude]),
-          (err)=> reject(err),
-          {
-          enableHighAccuracy: true, timeout: 15000, maximumAge: 0
-        });
-
-    }).catch(err=> {
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve([position.coords.latitude, position.coords.longitude]),
+          (err) => reject(err),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      }).catch(err => {
         let title, htmlContent;
-        const isLineBrowser=navigator.userAgent.toLowerCase().includes("line");
-
+        const isLineBrowser = navigator.userAgent.toLowerCase().includes("line");
         switch (err.code) {
-          case 1: title="คุณปฏิเสธการเข้าถึงตำแหน่ง"; htmlContent=isLineBrowser ? `<div style="text-align: left;" > <p>กรุณาอนุญาตตำแหน่งใน LINE โดยไปที่:</p> <ol> <li>"จุดสามจุด"(⋮) มุมขวาล่าง</li> <li>"ตั้งค่าเบราว์เซอร์" > "ล้างข้อมูล" </li> <li>ติ๊กเฉพาะ "สิทธิ์เข้าถึงเว็บไซต์" </li> <li>โหลดหน้านี้ใหม่</li> </ol> <p class="mt-2" >หรือ: เปิดด้วยเบราว์เซอร์อื่น</p> </div>` : `<div style="text-align: left;" > <p>กรุณาอนุญาตตำแหน่งในตั้งค่าเบราว์เซอร์:</p> <ol> <li>แตะ 🔒 ที่แถบที่อยู่</li> <li>"สิทธิ์ของเว็บ" > "ตำแหน่ง" > "อนุญาต" </li> </ol> </div>`; break;
-          case 2: title="ไม่สามารถระบุตำแหน่งได้"; htmlContent="สัญญาณ GPS อ่อน หรืออยู่ในอาคาร ลองใหม่ในที่โล่ง";
-          break;
-          case 3: title="หมดเวลาค้นหาตำแหน่ง"; htmlContent="ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและสัญญาณ GPS"; break;
-          default: title="เกิดข้อผิดพลาดตำแหน่ง"; htmlContent=`กรุณาลองใหม่อีกครั้ง`;
+          case 1: title = "คุณปฏิเสธการเข้าถึงตำแหน่ง"; htmlContent = isLineBrowser ? `<div style="text-align: left;"><p>กรุณาอนุญาตตำแหน่งใน LINE โดยไปที่:</p><ol><li>"จุดสามจุด"(⋮) มุมขวาล่าง</li><li>"ตั้งค่าเบราว์เซอร์" > "ล้างข้อมูล"</li><li>ติ๊กเฉพาะ "สิทธิ์เข้าถึงเว็บไซต์"</li><li>โหลดหน้านี้ใหม่</li></ol><p class="mt-2">หรือ: เปิดด้วยเบราว์เซอร์อื่น</p></div>` : `<div style="text-align: left;"><p>กรุณาอนุญาตตำแหน่งในตั้งค่าเบราว์เซอร์:</p><ol><li>แตะ 🔒 ที่แถบที่อยู่</li><li>"สิทธิ์ของเว็บ" > "ตำแหน่ง" > "อนุญาต"</li></ol></div>`; break;
+          case 2: title = "ไม่สามารถระบุตำแหน่งได้"; htmlContent = "สัญญาณ GPS อ่อน หรืออยู่ในอาคาร ลองใหม่ในที่โล่ง"; break;
+          case 3: title = "หมดเวลาค้นหาตำแหน่ง"; htmlContent = "ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและสัญญาณ GPS"; break;
+          default: title = "เกิดข้อผิดพลาดตำแหน่ง"; htmlContent = `กรุณาลองใหม่อีกครั้ง`;
         }
-
         Swal.fire({
-          icon: 'warning', title: `⚠️ $ {
-            title
-          }
-
-          `, html: htmlContent, confirmButtonText: 'เข้าใจแล้ว',
-          confirmButtonColor: '#d33'
+          icon: 'warning', title: `⚠️ ${title}`, html: htmlContent, confirmButtonText: 'เข้าใจแล้ว', confirmButtonColor: '#d33'
         });
-      throw err;
-    });
+        throw err;
+      });
     }
 
     function showTime() {
-      const date=new Date();
-
-      const time=date.toLocaleTimeString('th-TH', {
-        hour12: false
-      });
-    $('#MyClockDisplay').text(time);
-    setTimeout(showTime, 1000);
-    }
-
-    function setButtonsProcessing(isProcessing, actionType) {
-      const btnIn=$('.btn-clockin'),
-      btnOut=$('.btn-clockout');
-      btnIn.add(btnOut).prop('disabled', isProcessing);
-
-      if (isProcessing) {
-        const btn=actionType==='in' ? btnIn: btnOut;
-        btn.html('<span class="spinner-border spinner-border-sm me-2"></span> กำลังบันทึก...');
-      }
-
-      else {
-        btnIn.html('🟢 เข้างาน');
-        btnOut.html('🔴 เลิกงาน');
-      }
-    }
-
-    function showLoading(show) {
-      $('#message').html(show ? '<span class="spinner-border spinner-border-sm me-2"></span> กำลังโหลด...' : '☀️ ขอให้ทำงานอย่างมีความสุข') .toggleClass('alert-info', show).toggleClass('msgBg', !show);
-    }
-
-    function showNotification(message) {
-      $('#message').text(message).removeClass('msgBg').addClass('alert-info');
-    }
-
-    function clearForm() {
-      setTimeout(()=> {
-          showLoading(false);
-        }
-
-        , 2000);
-    }
-
-    function escapeHtml(unsafe) {
-      return unsafe .replace(/&/g, "&amp;") .replace(/</g, "&lt;") .replace(/>/g, "&gt;") .replace(/"/g, " &quot; ")
- .replace(/'/g, "&#039;");
- popup: 'warning-popup'
-        }
-
-        ,
-        icon: 'warning',
-        title: '🟡 คำเตือน',
-        text: result[2],
-        confirmButtonText: 'เข้าใจแล้ว'
-      });
-    }
-
-    else {
-
-      showErrorPopup('⚠️ เกิดข้อผิดพลาดจากระบบ',
-        `เซิร์ฟเวอร์พบปัญหา: $ {
-          result[2] || 'ไม่ทราบสาเหตุ'
-        }
-
-        `,
-        ()=> {});
-    }
-    }
-
-    function handleError(error, context, retryCallback) {
-      if (error && (error.code >=1 && error.code <=3)) {
-        console.error(`$ {
-            context
-          }
-
-          Geolocation Error: Already handled by getlocation() popup.`);
-        return;
-      }
-
-      showErrorPopup('⚠️ การเชื่อมต่อล้มเหลว',
-        'ไม่สามารถบันทึกข้อมูลได้ อาจเกิดจากปัญหาอินเทอร์เน็ต',
-        retryCallback);
-
-      console.error(`$ {
-          context
-        }
-
-        Error:`, error);
-    }
-
-    function showErrorPopup(title, text, retryCallback) {
-      Swal.fire({
-
-        icon: 'error',
-        title: title,
-        text: text,
-        confirmButtonText: 'ปิด',
-        showCancelButton: true,
-        cancelButtonText: 'ลองอีกครั้ง',
-        cancelButtonColor: '#28a745',
-      }).then((result)=> {
-        if (result.dismiss===Swal.DismissReason.cancel) {
-          setTimeout(()=> {
-              if (typeof retryCallback==='function') {
-                retryCallback();
-              }
-            }
-
-            , 500);
-        }
-      });
-    }
-
-    async function getEmployees() {
-      console.log('[Frontend] getEmployees called');
-      showLoading(true);
-
-      try {
-        const data=await callAppsScript('getEmployees');
-        console.log('[Frontend] Received employee data:', data);
-        const safeData=Array.isArray(data) ? data: [];
-        console.log('[Frontend] Safe data length:', safeData.length);
-        updateEmployeeList(safeData);
-      }
-
-      catch (error) {
-        console.error('[Frontend] Error fetching employees:', error);
-        showErrorPopup('⚠️ ไม่สามารถโหลดข้อมูลพนักงาน', 'การโหลดรายชื่อล้มเหลว โปรดตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง', getEmployees);
-      }
-
-      finally {
-        showLoading(false);
-      }
-    }
-
-    function updateEmployeeList(employees) {
-      console.log('[Frontend] updateEmployeeList called with:', employees);
-      const employeeSelect=$("#employee");
-      employeeSelect.find('option:not(:first)').remove();
-
-      if (Array.isArray(employees) && employees.length > 0) {
-        console.log('[Frontend] Adding', employees.length, 'employees to dropdown');
-
-        employees.forEach(item=> {
-            if (item[0] && item[0].trim() !=='') {
-              console.log('[Frontend] Adding employee:', item[0]);
-              employeeSelect.append(new Option(item[0].trim(), item[0].trim()));
-            }
-          });
-        console.log('[Frontend] Employee list updated successfully');
-      }
-
-      else {
-        console.log('[Frontend] No employees found or empty array');
-        showNotification('⚠️ ไม่พบข้อมูลพนักงานในระบบ');
-      }
-    }
-
-    function getlocation() {
-      return new Promise((resolve, reject)=> {
-          if ( !navigator.geolocation) {
-            return reject({
-              code: 4, message: "เบราว์เซอร์ของคุณไม่รองรับ Geolocation"
-            });
-        }
-
-        navigator.geolocation.getCurrentPosition((position)=> resolve([position.coords.latitude, position.coords.longitude]),
-          (err)=> reject(err),
-          {
-          enableHighAccuracy: true, timeout: 15000, maximumAge: 0
-        });
-
-    }).catch(err=> {
-        let title, htmlContent;
-        const isLineBrowser=navigator.userAgent.toLowerCase().includes("line");
-
-        switch (err.code) {
-          case 1: title="คุณปฏิเสธการเข้าถึงตำแหน่ง"; htmlContent=isLineBrowser ? `<div style="text-align: left;" > <p>กรุณาอนุญาตตำแหน่งใน LINE โดยไปที่:</p> <ol> <li>"จุดสามจุด"(⋮) มุมขวาล่าง</li> <li>"ตั้งค่าเบราว์เซอร์" > "ล้างข้อมูล" </li> <li>ติ๊กเฉพาะ "สิทธิ์เข้าถึงเว็บไซต์" </li> <li>โหลดหน้านี้ใหม่</li> </ol> <p class="mt-2" >หรือ: เปิดด้วยเบราว์เซอร์อื่น</p> </div>` : `<div style="text-align: left;" > <p>กรุณาอนุญาตตำแหน่งในตั้งค่าเบราว์เซอร์:</p> <ol> <li>แตะ 🔒 ที่แถบที่อยู่</li> <li>"สิทธิ์ของเว็บ" > "ตำแหน่ง" > "อนุญาต" </li> </ol> </div>`; break;
-          case 2: title="ไม่สามารถระบุตำแหน่งได้"; htmlContent="สัญญาณ GPS อ่อน หรืออยู่ในอาคาร ลองใหม่ในที่โล่ง";
-          break;
-          case 3: title="หมดเวลาค้นหาตำแหน่ง"; htmlContent="ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและสัญญาณ GPS"; break;
-          default: title="เกิดข้อผิดพลาดตำแหน่ง"; htmlContent=`กรุณาลองใหม่อีกครั้ง`;
-        }
-
-        Swal.fire({
-          icon: 'warning', title: `⚠️ $ {
-            title
-          }
-
-          `, html: htmlContent, confirmButtonText: 'เข้าใจแล้ว',
-          confirmButtonColor: '#d33'
-        });
-      throw err;
-    });
-    }
-
-    function showTime() {
-      const date=new Date();
-
-      const time=date.toLocaleTimeString('th-TH', {
-        hour12: false
-      });
-    $('#MyClockDisplay').text(time);
-    setTimeout(showTime, 1000);
-    }
-
-    function setButtonsProcessing(isProcessing, actionType) {
-      const btnIn=$('.btn-clockin'),
-      btnOut=$('.btn-clockout');
-      btnIn.add(btnOut).prop('disabled', isProcessing);
-
-      if (isProcessing) {
-        const btn=actionType==='in' ? btnIn: btnOut;
-        btn.html('<span class="spinner-border spinner-border-sm me-2"></span> กำลังบันทึก...');
-      }
-
-      else {
-        btnIn.html('🟢 เข้างาน');
-        btnOut.html('🔴 เลิกงาน');
-      }
-    }
-
-    function showLoading(show) {
-      $('#message').html(show ? '<span class="spinner-border spinner-border-sm me-2"></span> กำลังโหลด...' : '☀️ ขอให้ทำงานอย่างมีความสุข') .toggleClass('alert-info', show).toggleClass('msgBg', !show);
-    }
-
-    function showNotification(message) {
-      $('#message').text(message).removeClass('msgBg').addClass('alert-info');
-    }
-
-    function clearForm() {
-      setTimeout(()=> {
-          showLoading(false);
-        }
-
-        , 2000);
-    }
-
-    function escapeHtml(unsafe) {
-      return unsafe .replace(/&/g, "&amp;") .replace(/</g, "&lt;") .replace(/>/g, "&gt;") .replace(/"/g, " &quot; ")
- .replace(/'/g, "&#039;");
-
-        }
-
-        function showPopup(employee, time, status, location) {
-          const safeEmployee=escapeHtml(employee);
-          const safeStatus=escapeHtml(status);
-          const safeLocation=escapeHtml(location);
-
-          Swal.fire({
-
-            icon: 'success',
-            title: '✔️ บันทึกเรียบร้อย',
-            html: ` <div style="text-align: left; word-break: break-word;" > <p><strong>👤 ชื่อ:</strong> $ {
-              safeEmployee
-            }
-
-            </p> <p><strong>⏰ เวลา:</strong> $ {
-              time.replace('<br>', ' ')
-            }
-
-            </p> <p><strong>📋 สถานะ:</strong> $ {
-              safeStatus
-            }
-
-            </p> <p><strong>📍 ตำแหน่ง:</strong> $ {
-              safeLocation
-            }
-
-            </p> </div> `,
-            confirmButtonText: 'ปิด',
-            confirmButtonColor: '#28a745'
-          });
-      }
-
-      else {
-        Swal.fire({
-          icon: 'error',
-          title: 'เกิดข้อผิดพลาด',
-          text: response ? response.message : 'ไม่ได้รับข้อมูลตอบกลับจากเซิร์ฟเวอร์'
-        });
-    }
-    }
-
-    function handleError(error, context, retryCallback) {
-      console.error(`Error in $ {
-          context
-        }
-
-        :`, error);
-      let errorMsg=error.message || 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
-
-      if (errorMsg.includes('เซิร์ฟเวอร์ตอบสนองช้า')) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'กำลังพยายามใหม่...',
-          text: 'เซิร์ฟเวอร์ตอบสนองช้า กำลังลองใหม่อีกครั้ง',
-          timer: 2000,
-          showConfirmButton: false
-
-        }).then(()=> {
-          if (retryCallback) retryCallback();
-        });
-      return;
-    }
-
-    Swal.fire({
-      icon: 'error',
-      title: 'เกิดข้อผิดพลาด',
-      text: errorMsg
-    });
-    }
-
-    function setButtonsProcessing(isProcessing, type=null) {
-      const btnIn=$('.btn-clockin');
-      const btnOut=$('.btn-clockout');
-
-      if (isProcessing) {
-        btnIn.prop('disabled', true);
-        btnOut.prop('disabled', true);
-        if (type==='in') btnIn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังบันทึก...');
-        if (type==='out') btnOut.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังบันทึก...');
-      }
-
-      else {
-        btnIn.prop('disabled', false).html('🟢 เข้างาน');
-        btnOut.prop('disabled', false).html('� เลิกงาน');
-      }
-    }
-
-    function showTime() {
-      const date=new Date();
-      let h=date.getHours();
-      let m=date.getMinutes();
-      let s=date.getSeconds();
-      let session="AM";
-
-      if (h==0) {
-        h=12;
-      }
-
-      if (h > 12) {
-        h=h - 12; session="PM";
-      }
-
-      h=(h < 10) ? "0" + h : h;
-      m=(m < 10) ? "0" + m : m;
-      s=(s < 10) ? "0" + s : s;
-
-      const time=h + ":" + m + ":" + s + " " + session;
-      const clockDisplay=document.getElementById("MyClockDisplay");
-
-      if (clockDisplay) {
-        clockDisplay.innerText=time;
-        clockDisplay.textContent=time;
-      }
-
+      const date = new Date();
+      const time = date.toLocaleTimeString('th-TH', { hour12: false });
+      $('#MyClockDisplay').text(time);
       setTimeout(showTime, 1000);
     }
 
-    function getlocation() {
-      return new Promise((resolve, reject)=> {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position)=> {
-                resolve(`$ {
-                    position.coords.latitude
-                  }
-
-                  , $ {
-                    position.coords.longitude
-                  }
-
-                  `);
-              }
-
-              ,
-              (error)=> {
-                console.error('Geolocation error:', error);
-                reject(new Error('ไม่สามารถดึงตำแหน่ง GPS ได้ กรุณาเปิด GPS'));
-              }
-
-              ,
-              {
-              enableHighAccuracy: true, timeout: 10000, maximumAge: 0
-            });
-        }
-
-        else {
-          reject(new Error('เบราว์เซอร์นี้ไม่รองรับ Geolocation'));
-        }
-      });
+    function setButtonsProcessing(isProcessing, actionType) {
+      const btnIn = $('.btn-clockin'), btnOut = $('.btn-clockout');
+      btnIn.add(btnOut).prop('disabled', isProcessing);
+      if (isProcessing) {
+        const btn = actionType === 'in' ? btnIn : btnOut;
+        btn.html('<span class="spinner-border spinner-border-sm me-2"></span> กำลังบันทึก...');
+      } else {
+        btnIn.html('🟢 เข้างาน');
+        btnOut.html('🔴 เลิกงาน');
+      }
     }
 
-    function escapeHtml(text) {
-      if ( !text) return text;
-      return String(text) .replace(/&/g, "&amp;") .replace(/</g, "&lt;") .replace(/>/g, "&gt;") .replace(/"/g, " &quot; ")
- .replace(/'/g, "&#039;");
+    function showLoading(show) {
+      $('#message').html(show ? '<span class="spinner-border spinner-border-sm me-2"></span> กำลังโหลด...' : '☀️ ขอให้ทำงานอย่างมีความสุข').toggleClass('alert-info', show).toggleClass('msgBg', !show);
+    }
 
-        }
+    function showNotification(message) {
+      $('#message').text(message).removeClass('msgBg').addClass('alert-info');
+    }
 
-        function getEmployees() {
-          return callAppsScript('getEmployees') .then(data=> {
-              const select=$('#employee');
-              select.empty();
-              select.append('<option value="" disabled selected>พิมพ์เพื่อค้นหาพนักงาน...</option>');
+    function clearForm() {
+      setTimeout(() => { showLoading(false); }, 2000);
+    }
 
-              if (Array.isArray(data)) {
-                data.forEach(emp=> {
-                    select.append(`<option value="${emp}" >$ {
-                        emp
-                      }
+    function escapeHtml(unsafe) {
+      if (!unsafe) return "";
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
-                      </option>`);
-                  });
-              }
+    function showPopup(employee, time, status, location) {
+      const safeEmployee = escapeHtml(employee);
+      const safeStatus = escapeHtml(status);
+      const safeLocation = escapeHtml(location);
 
-            }) .catch(err=> {
-              console.error('Failed to load employees:', err);
+      Swal.fire({
+        icon: 'success',
+        title: '✔️ บันทึกเรียบร้อย',
+        html: `
+            <div style="text-align: left; word-break: break-word;">
+              <p><strong>👤 ชื่อ:</strong> ${safeEmployee}</p>
+              <p><strong>⏰ เวลา:</strong> ${time.replace('<br>', ' ')}</p>
+              <p><strong>📋 สถานะ:</strong> ${safeStatus}</p>
+              <p><strong>📍 ตำแหน่ง:</strong> ${safeLocation}</p>
+            </div>
+          `,
+        confirmButtonText: 'ปิด',
+        confirmButtonColor: '#28a745'
+      });
+    }
+  </script>
+</body>
 
-              Swal.fire({
-                icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'ไม่สามารถโหลดรายชื่อพนักงานได้'
-              });
-          });
-      }
-
-      </script> </body> </html>
+</html>
