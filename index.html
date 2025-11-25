@@ -321,7 +321,7 @@
         return fetch(WEB_APP_URL, {
           method: 'POST',
           redirect: 'follow',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          headers: { 'Content-Type': 'application/json' }, // ✅ แก้ไข: ใช้ Content-Type ที่ถูกต้อง
           body: JSON.stringify({ functionName, args, clientInfo: { ip } }), // <--- ส่ง IP ไปที่นี่
           signal: controller.signal
         });
