@@ -255,7 +255,10 @@
             }).catch(err => console.error('Error getting profile:', err));
           } else {
             // ถ้ายังไม่ล็อกอิน ให้สั่งล็อกอิน (กรณีเปิดผ่าน External Browser)
-            liff.login();
+            // ✅ แก้ไข: ระบุ redirectUri ให้ชัดเจน เพื่อป้องกัน ERR_BLOCKED_BY_RESPONSE
+            liff.login({
+              redirectUri: "https://raymath95.github.io/leamthonginout/"
+            });
           }
         })
         .catch((err) => {
